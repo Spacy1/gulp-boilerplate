@@ -24,6 +24,7 @@ const critical = require('critical').stream;
 const cache = require('gulp-cache');
 const cached = require('gulp-cached');
 const cachebust = require('gulp-cache-bust');
+const swPrecache   = require('sw-precache');
 
 /*
  * Project paths
@@ -31,7 +32,7 @@ const cachebust = require('gulp-cache-bust');
 const paths = {
   src: {
     html: './src/*.html',
-    js: './src/js/**/*.js',
+    js: './src/js/common.js',
     scss: './src/scss/styles.scss',
     img: './src/img/**/*',
     fonts: './src/fonts/**/*',
@@ -47,7 +48,8 @@ const paths = {
   },
   watch: {
     html: './src/**/*.html',
-    scss: './src/scss/**/*.scss'
+    scss: './src/scss/**/*.scss',
+    js: './src/js/**/*.js'
   },
   clean: './dist'
 };
@@ -172,9 +174,13 @@ gulp.task('DEV:bundleJS', () => {
       })
     )
     .pipe(sourcemaps.init())
-    .pipe(concat('scripts.min.js'))
     .pipe(babel())
     .pipe(uglify())
+    .pipe(
+      rename({
+        suffix: '.min'
+      })
+    )
     .pipe(sourcemaps.write())
     .pipe(gulp.dest(paths.dist.js))
     .pipe(browserSync.reload({ stream: true }));
@@ -189,10 +195,31 @@ gulp.task('PROD:bundleJS', () => {
         basepath: '@file'
       })
     )
-    .pipe(concat('scripts.min.js'))
     .pipe(babel())
     .pipe(uglify())
+    .pipe(
+      rename({
+        suffix: '.min'
+      })
+    )
     .pipe(gulp.dest(paths.dist.js));
+});
+
+/*
+ * Creating a Service Worker
+ */
+gulp.task('serviceWorker', () => {
+  swPrecache.write(`./dist/service-worker.js`, {
+    staticFileGlobs: [
+      './dist/manifest.json',
+      './dist/**/*.html',
+      './dist/styles/*.min.css',
+      './dist/fonts/**/*',
+      './dist/images/**/*',
+      './dist/scripts/*.min.js'
+    ],
+    stripPrefix: `./src`
+  });
 });
 
 /*
@@ -229,7 +256,7 @@ gulp.task('PROD:bundleManifest', () => {
 gulp.task('DEV:watch', () => {
   gulp.watch(paths.watch.html, ['DEV:bundleHTML']);
   gulp.watch(paths.watch.scss, ['DEV:bundleSCSS']);
-  gulp.watch(paths.src.js, ['bundleJS']);
+  gulp.watch(paths.watch.js, ['DEV:bundleJS']);
   gulp.watch(paths.src.img, ['bundleIMG']);
   gulp.watch(paths.src.fonts, ['bundleFonts']);
 });
@@ -280,7 +307,7 @@ gulp.task('DEV:build', [
   'bundleFonts',
   'bundleIMG',
   'DEV:bundleHTML',
-  'bundleJS',
+  'DEV:bundleJS',
   'DEV:webServer',
   'DEV:watch'
 ]);
@@ -294,5 +321,6 @@ gulp.task('PROD:build', [
   'PROD:bundleManifest',
   'PROD:bundleSCSS',
   'PROD:bundleHTML',
-  'bundleJS'
+  'PROD:bundleJS',
+  'serviceWorker'
 ]);

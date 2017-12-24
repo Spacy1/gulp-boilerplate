@@ -41,6 +41,7 @@
     "gulp-uglify": "^3.0.0",
     "imagemin-gifsicle": "^5.2.0",
     "imagemin-jpegtran": "^5.0.2",
-    "imagemin-optipng": "^5.2.1"
+    "imagemin-optipng": "^5.2.1",
+    "sw-precache": "^5.2.0"
   }
 }
