@@ -2,8 +2,9 @@
 
 ## TODO
 
-* Add svg minification - https://www.npmjs.com/package/gulp-svgmin
 * Add svg sprites
 * Add ESLint
+* Add Stylelint
+* Add png/jpg to webp convertion
 
 <!-- # Gulp Project Boilerplate -->

@@ -1,326 +1,295 @@
 /*
  * Gulp Project Boilerplate, Copyright © 2017, Alexander Repeta <axzerk@gmail.com>
  */
+const gulp = require("gulp");
+const del = require("del");
+const runSequence = require("run-sequence");
+const browserSync = require("browser-sync");
+const autoprefixer = require("autoprefixer");
+const swPrecache = require("sw-precache");
 
-const gulp = require('gulp');
-const sass = require('gulp-sass');
-const babel = require('gulp-babel');
-const browserSync = require('browser-sync');
-const sourcemaps = require('gulp-sourcemaps');
-const concat = require('gulp-concat');
-const cssnano = require('gulp-cssnano');
-const del = require('del');
-const mmq = require('gulp-merge-media-queries');
-const autoprefixer = require('gulp-autoprefixer');
-const plumber = require('gulp-plumber');
-const uglify = require('gulp-uglify');
-const imagemin = require('gulp-imagemin');
-const rigger = require('gulp-rigger');
-const htmlmin = require('gulp-htmlmin');
-const notify = require('gulp-notify');
-const importFile = require('gulp-file-include');
-const rename = require('gulp-rename');
-const critical = require('critical').stream;
-const cache = require('gulp-cache');
-const cached = require('gulp-cached');
-const cachebust = require('gulp-cache-bust');
-const swPrecache   = require('sw-precache');
+const $ = require("gulp-load-plugins")();
+
+// const cache = require("gulp-cache");
+// const cached = require("gulp-cached");
 
 /*
  * Project paths
  */
 const paths = {
   src: {
-    html: './src/*.html',
-    js: './src/js/common.js',
-    scss: './src/scss/styles.scss',
-    img: './src/img/**/*',
-    fonts: './src/fonts/**/*',
-    manifest: './src/manifest.json'
+    html: "src/*.html",
+    js: "src/js/common.js",
+    scss: "src/scss/styles.scss",
+    img: "src/img/**/*.{png,jpg,jpeg,svg}",
+    fonts: "src/fonts/**/*.{woff,woff2}",
+    manifest: "src/manifest.json"
   },
-  dist: {
-    html: './dist',
-    js: './dist/scripts',
-    css: './dist/styles',
-    img: './dist/images',
-    fonts: './dist/fonts',
-    manifest: './dist'
+  build: {
+    html: "build",
+    js: "build/scripts",
+    css: "build/styles",
+    img: "build/images",
+    fonts: "build/fonts",
+    manifest: "build"
   },
   watch: {
-    html: './src/**/*.html',
-    scss: './src/scss/**/*.scss',
-    js: './src/js/**/*.js'
+    html: "src/**/*.html",
+    scss: "src/scss/**/*.scss",
+    js: "src/js/**/*.js"
   },
-  clean: './dist'
+  clean: "build"
 };
 
 /*
  * Assembling .scss files
  */
-gulp.task('DEV:bundleSCSS', () => {
-  return gulp
+gulp.task("dev:styles", () =>
+  gulp
     .src(paths.src.scss)
-    .pipe(sourcemaps.init())
-    .pipe(sass({ outputStyle: ':nested' }))
+    .pipe($.sourcemaps.init())
+    .pipe($.sass({ precision: 10 }))
     .on(
-      'error',
-      notify.onError({
-        title: 'SCSS',
-        message: '<%= error.message %>'
+      "error",
+      $.notify.onError({
+        title: "SCSS",
+        message: "<%= error.message %>"
       })
     )
-    .pipe(
-      autoprefixer({
-        browsers: ['last 15 versions', '> 1%'],
-        cascade: false
-      })
-    )
-    .pipe(mmq())
-    .pipe(cssnano())
-    .pipe(
-      rename({
-        suffix: '.min'
-      })
-    )
-    .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest(paths.dist.css))
-    .pipe(browserSync.reload({ stream: true }));
-});
+    .pipe($.postcss([autoprefixer()]))
+    .pipe($.mergeMediaQueries({ log: false }))
+    .pipe(gulp.dest(paths.build.css))
+    .pipe($.cssnano())
+    .pipe($.size({ title: "styles" }))
+    .pipe($.rename("styles.min.css"))
+    .pipe($.sourcemaps.write("."))
+    .pipe(gulp.dest(paths.build.css))
+);
 
-gulp.task('PROD:bundleSCSS', () => {
-  return gulp
+gulp.task("prod:styles", () =>
+  gulp
     .src(paths.src.scss)
-    .pipe(sass())
-    .pipe(
-      autoprefixer({
-        browsers: ['last 15 versions', '> 1%'],
-        cascade: false
-      })
-    )
-    .pipe(mmq())
-    .pipe(cssnano())
-    .pipe(
-      rename({
-        suffix: '.min'
-      })
-    )
-    .pipe(cachebust({ type: 'timestamp' }))
-    .pipe(gulp.dest(paths.dist.css));
-});
+    .pipe($.sass())
+    .pipe($.postcss([autoprefixer()]))
+    .pipe($.mergeMediaQueries({ log: false }))
+    .pipe(gulp.dest(paths.build.css))
+    .pipe($.cssnano())
+    .pipe($.size({ title: "styles" }))
+    .pipe($.rename("styles.min.css"))
+    .pipe($.cachebust({ type: "timestamp" }))
+    .pipe(gulp.dest(paths.build.css))
+);
 
 /*
  * Assembling .html files
  */
-gulp.task('DEV:bundleHTML', () => {
-  return gulp
+gulp.task("dev:html", () =>
+  gulp
     .src(paths.src.html)
-    .pipe(cached('html'))
-    .pipe(rigger())
+    .pipe($.cached("html"))
+    .pipe($.rigger())
     .on(
-      'error',
-      notify.onError({
-        title: 'HTML',
-        message: '<%= error.message %>'
+      "error",
+      $.notify.onError({
+        title: "HTML",
+        message: "<%= error.message %>"
       })
     )
-    .pipe(gulp.dest(paths.dist.html))
-    .pipe(browserSync.reload({ stream: true }));
-});
+    .pipe(gulp.dest(paths.build.html))
+);
 
-gulp.task('PROD:bundleHTML', () => {
-  return gulp
+gulp.task("prod:html", () =>
+  gulp
     .src(paths.src.html)
-    .pipe(rigger())
+    .pipe($.rigger())
     .pipe(
-      critical({
-        base: './dist/',
-        minify: true,
-        inline: true,
-        width: 1920,
-        height: 1280,
-        css: [`${paths.dist.css}/styles.min.css`]
+      htmlmin({
+        removeComments: true,
+        collapseWhitespace: true,
+        collapseBooleanAttributes: true,
+        removeAttributeQuotes: true,
+        removeRedundantAttributes: true,
+        removeEmptyAttributes: true,
+        removeScriptTypeAttributes: true,
+        removeStyleLinkTypeAttributes: true,
+        removeOptionalTags: true
       })
     )
-    .on(
-      'error',
-      notify.onError({
-        title: 'HTML',
-        message: '<%= error.message %>'
-      })
-    )
-    .pipe(htmlmin({ collapseWhitespace: true }))
-    .pipe(cachebust({ type: 'timestamp' }))
-    .pipe(gulp.dest(paths.dist.html));
-});
+    .pipe($.cacheBust({ type: "timestamp" }))
+    .pipe($.size({ title: "html", showFiles: true }))
+    .pipe(gulp.dest(paths.build.html))
+);
 
 /*
  * Assembling .js files
  */
-gulp.task('DEV:bundleJS', () => {
-  return gulp
+gulp.task("dev:scripts", () =>
+  gulp
     .src(paths.src.js)
     .pipe(
-      plumber({
-        errorHandler: notify.onError({
-          title: 'JS',
-          message: '<%= error.message %>'
+      $.plumber({
+        errorHandler: $.notify.onError({
+          title: "JS",
+          message: "<%= error.message %>"
         })
       })
     )
     .pipe(
-      importFile({
-        prefix: '@@',
-        basepath: '@file'
+      $.fileInclude({
+        prefix: "@@",
+        basepath: "@file"
       })
     )
-    .pipe(sourcemaps.init())
-    .pipe(babel())
-    .pipe(uglify())
-    .pipe(
-      rename({
-        suffix: '.min'
-      })
-    )
-    .pipe(sourcemaps.write())
-    .pipe(gulp.dest(paths.dist.js))
-    .pipe(browserSync.reload({ stream: true }));
-});
+    .pipe($.sourcemaps.init())
+    .pipe($.babel())
+    .pipe($.sourcemaps.write())
+    .pipe($.uglify())
+    .pipe($.rename("scripts.min.js"))
+    .pipe($.sourcemaps.write("."))
+    .pipe(gulp.dest(paths.build.js))
+);
 
-gulp.task('PROD:bundleJS', () => {
-  return gulp
+gulp.task("prod:scripts", () =>
+  gulp
     .src(paths.src.js)
     .pipe(
-      importFile({
-        prefix: '@@',
-        basepath: '@file'
+      $.fileInclude({
+        prefix: "@@",
+        basepath: "@file"
       })
     )
-    .pipe(babel())
-    .pipe(uglify())
+    .pipe($.babel())
+    .pipe($.uglify())
+    .pipe($.size({ title: "scripts" }))
+    .pipe($.rename({ suffix: ".min" }))
+    .pipe(gulp.dest(paths.build.js))
+);
+
+/*
+ * Optimizing and caching images
+ */
+gulp.task("images", () =>
+  gulp
+    .src(paths.src.img)
     .pipe(
-      rename({
-        suffix: '.min'
-      })
+      $.imagemin([
+        $.imagemin.jpegtran({ progressive: true }),
+        $.imagemin.optipng({ optimizationLevel: 3 }),
+        $.imagemin.svgo({
+          plugins: [{ removeViewBox: false }, { cleanupIDs: false }]
+        })
+      ])
     )
-    .pipe(gulp.dest(paths.dist.js));
-});
+    .pipe($.cached("images"))
+    .pipe(gulp.dest(paths.build.img))
+    .pipe($.size({ title: "images" }))
+);
+
+/*
+ * Assembling fonts
+ */
+gulp.task("fonts", () =>
+  gulp.src(paths.src.fonts).pipe(gulp.dest(paths.build.fonts))
+);
+
+/*
+ * Assembling manifest
+ */
+gulp.task("prod:manifest", () =>
+  gulp.src(paths.src.manifest).pipe(gulp.dest(paths.build.manifest))
+);
 
 /*
  * Creating a Service Worker
  */
-gulp.task('serviceWorker', () => {
-  swPrecache.write(`./dist/service-worker.js`, {
+gulp.task("serviceWorker", () => {
+  swPrecache.write(`./build/service-worker.js`, {
     staticFileGlobs: [
-      './dist/manifest.json',
-      './dist/**/*.html',
-      './dist/styles/*.min.css',
-      './dist/fonts/**/*',
-      './dist/images/**/*',
-      './dist/scripts/*.min.js'
+      "./build/manifest.json",
+      "./build/**/*.html",
+      "./build/styles/*.min.css",
+      "./build/fonts/**/*",
+      "./build/images/**/*",
+      "./build/scripts/*.min.js"
     ],
     stripPrefix: `./src`
   });
 });
 
 /*
- * Optimizing and caching images
- */
-gulp.task('bundleIMG', () => {
-  return gulp
-    .src(paths.src.img)
-    .pipe(
-      cache(
-        imagemin([imagemin.gifsicle(), imagemin.jpegtran(), imagemin.optipng()])
-      )
-    )
-    .pipe(gulp.dest(paths.dist.img));
-});
-
-/*
- * Assembling fonts
- */
-gulp.task('bundleFonts', () => {
-  return gulp.src(paths.src.fonts).pipe(gulp.dest(paths.dist.fonts));
-});
-
-/*
- * Assembling manifest
- */
-gulp.task('PROD:bundleManifest', () => {
-  return gulp.src(paths.src.manifest).pipe(gulp.dest(paths.dist.manifest));
-});
-
-/*
  * Watching for file changes in ./src
  */
-gulp.task('DEV:watch', () => {
-  gulp.watch(paths.watch.html, ['DEV:bundleHTML']);
-  gulp.watch(paths.watch.scss, ['DEV:bundleSCSS']);
-  gulp.watch(paths.watch.js, ['DEV:bundleJS']);
-  gulp.watch(paths.src.img, ['bundleIMG']);
-  gulp.watch(paths.src.fonts, ['bundleFonts']);
+gulp.task("dev:watch", () => {
+  gulp.watch(paths.watch.html, ["dev:html", browserSync.reload]);
+  gulp.watch(paths.watch.scss, ["dev:styles", browserSync.reload]);
+  gulp.watch(paths.watch.js, ["dev:scripts", browserSync.reload]);
 });
 
 /*
- * BrowserSync dev web-server
+ * BrowserSync web-server
  */
-gulp.task('DEV:webServer', () => {
-  browserSync({
+gulp.task("dev:server", () =>
+  browserSync.init({
     server: {
-      baseDir: './dist'
+      baseDir: "./build"
     },
-    host: 'localhost',
+    host: "localhost",
     port: 3000,
-    logPrefix: 'DevServer',
-    notify: false
-  });
-});
+    logPrefix: "DevServer",
+    notify: false,
+    open: true,
+    cors: true,
+    ui: false
+  })
+);
 
 /*
- * Cleaning ./dist dir
+ * Cleaning ./build dir
  */
-gulp.task('clean:dist', () => {
-  return del.sync(paths.clean);
-});
+gulp.task("clean:build", () => del(paths.clean));
 
 /*
  * Cleaning cache
  */
-gulp.task('clean:cache', () => {
-  return cache.clearAll();
-});
+gulp.task("clean:cache", () => $.cache.clearAll());
 
 /*
  * Removing repository specific files
  */
-gulp.task('prepare', () => {
-  return del.sync(['**/.gitkeep', 'README.md']);
-});
+gulp.task("prepare", () => del(["**/.gitkeep", "README.md"]));
 
 /*
  * Building for development
  */
-gulp.task('DEV:build', [
-  'clean:dist',
-  'clean:cache',
-  'DEV:bundleSCSS',
-  'bundleFonts',
-  'bundleIMG',
-  'DEV:bundleHTML',
-  'DEV:bundleJS',
-  'DEV:webServer',
-  'DEV:watch'
-]);
+gulp.task("dev:build", cb =>
+  runSequence(
+    "clean:build",
+    "clean:cache",
+    "images",
+    "fonts",
+    "dev:styles",
+    "dev:scripts",
+    "dev:html",
+    "dev:server",
+    "dev:watch",
+    cb
+  )
+);
 
 /*
  * Building for production
  */
-gulp.task('PROD:build', [
-  'bundleIMG',
-  'bundleFonts',
-  'PROD:bundleManifest',
-  'PROD:bundleSCSS',
-  'PROD:bundleHTML',
-  'PROD:bundleJS',
-  'serviceWorker'
-]);
+gulp.task("prod:build", cb =>
+  runSequence(
+    "clean:build",
+    "clean:cache",
+    "images",
+    "fonts",
+    "prod:manifest",
+    "prod:styles",
+    "prod:scripts",
+    "prod:html",
+    "serviceWorker",
+    cb
+  )
+);

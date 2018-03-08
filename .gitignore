@@ -19,6 +19,4 @@ npm-debug.log
 .sass-cache/
 *.css.map
 
-dist/
-
-playground.js
+build/
