@@ -76,7 +76,7 @@ gulp.task("prod:styles", () =>
     .pipe($.cssnano())
     .pipe($.size({ title: "styles" }))
     .pipe($.rename("styles.min.css"))
-    .pipe($.cachebust({ type: "timestamp" }))
+    .pipe($.cacheBust({ type: "timestamp" }))
     .pipe(gulp.dest(paths.build.css))
 );
 
@@ -103,7 +103,7 @@ gulp.task("prod:html", () =>
     .src(paths.src.html)
     .pipe($.rigger())
     .pipe(
-      htmlmin({
+      $.htmlmin({
         removeComments: true,
         collapseWhitespace: true,
         collapseBooleanAttributes: true,
